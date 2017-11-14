@@ -43,7 +43,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find(".title_wrapper > h1").First().Text()))
+	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
 	title := matches[1]
 	year := matches[2]
 	rating := strings.Split(doc.Find("[itemprop=\"ratingValue\"]").First().Text(), "/")[0]
