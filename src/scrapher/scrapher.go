@@ -1,6 +1,8 @@
 package scrapher
 
 import (
+	"encoding/xml"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -13,7 +15,54 @@ import (
 
 var re = regexp.MustCompile(`(.+) \((\d{4})\)`)
 
-func GetMoviePageResponse(url string) (*http.Response, error) {
+func ExtractMovieInfo(doc *goquery.Document) models.Movie {
+	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
+
+	title := matches[1]
+	year, _ := strconv.Atoi(matches[2])
+	rating, _ := strconv.ParseFloat(strings.Split(doc.Find("[itemprop=\"ratingValue\"]").First().Text(), "/")[0], 64)
+	numRatings, _ := utils.StringToInt(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
+
+	return models.Movie{
+		Title:      title,
+		Year:       year,
+		Rating:     rating,
+		NumRatings: numRatings,
+	}
+}
+
+func ExtractMovieLinks(url string) ([]string, error) {
+	resp, err := GetHTTPResponse(url)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	u := models.URLSet{}
+	err = xml.Unmarshal(b, &u)
+
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]string, len(u.URLs))
+
+	for i, url := range u.URLs {
+		out[i] = url.Location
+	}
+
+	return out, nil
+}
+
+func GetHTTPResponse(url string) (*http.Response, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 
@@ -30,20 +79,4 @@ func GetMoviePageResponse(url string) (*http.Response, error) {
 	}
 
 	return resp, err
-}
-
-func ExtractMovieInfo(doc *goquery.Document) models.Movie {
-	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
-
-	title := matches[1]
-	year, _ := strconv.Atoi(matches[2])
-	rating, _ := strconv.ParseFloat(strings.Split(doc.Find("[itemprop=\"ratingValue\"]").First().Text(), "/")[0], 64)
-	numRatings, _ := utils.StringToInt(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
-
-	return models.Movie{
-		Title:      title,
-		Year:       year,
-		Rating:     rating,
-		NumRatings: numRatings,
-	}
 }
