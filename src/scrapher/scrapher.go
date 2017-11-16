@@ -53,13 +53,47 @@ func ExtractMovieLinks(url string) ([]string, error) {
 		return nil, err
 	}
 
-	out := make([]string, len(u.URLs))
+	links := make([]string, len(u.URLs))
 
 	for i, url := range u.URLs {
-		out[i] = url.Location
+		links[i] = url.Location
 	}
 
-	return out, nil
+	return links, nil
+}
+
+func ExtractSitemapLinks() ([]string, error) {
+	url := "http://www.imdb.com/sitemap/index.xml.gz"
+	resp, err := GetHTTPResponse(url)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	s := models.SitemapIndex{}
+	err = xml.Unmarshal(b, &s)
+
+	if err != nil {
+		return nil, err
+	}
+
+	links := []string{}
+
+	for _, sitemap := range s.Sitemaps {
+		if strings.HasPrefix(sitemap.Location, "http://www.imdb.com/sitemap/title") {
+			links = append(links, sitemap.Location)
+		}
+	}
+
+	return links, nil
 }
 
 func GetHTTPResponse(url string) (*http.Response, error) {

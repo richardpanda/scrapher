@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	links, err := scrapher.ExtractMovieLinks("http://www.imdb.com/sitemap/title-474.xml.gz")
+	links, err := scrapher.ExtractSitemapLinks()
 
 	if err != nil {
 		log.Fatal(err)
@@ -16,4 +16,13 @@ func main() {
 
 	fmt.Println(links)
 	fmt.Println(len(links))
+
+	// links, err := scrapher.ExtractMovieLinks("http://www.imdb.com/sitemap/title-474.xml.gz")
+
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Println(links)
+	// fmt.Println(len(links))
 }
