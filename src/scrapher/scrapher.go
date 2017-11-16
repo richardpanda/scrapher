@@ -2,11 +2,15 @@ package scrapher
 
 import (
 	"encoding/xml"
+	"errors"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/richardpanda/scrapher/src/models"
@@ -15,20 +19,38 @@ import (
 
 var re = regexp.MustCompile(`(.+) \((\d{4})\)`)
 
-func ExtractMovieInfo(doc *goquery.Document) models.Movie {
+func ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
 
-	title := matches[1]
-	year, _ := strconv.Atoi(matches[2])
-	rating, _ := strconv.ParseFloat(strings.Split(doc.Find("[itemprop=\"ratingValue\"]").First().Text(), "/")[0], 64)
-	numRatings, _ := utils.StringToInt(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
+	if len(matches) < 3 {
+		return nil, errors.New("unable to parse title and year")
+	}
 
-	return models.Movie{
+	title := matches[1]
+	year, err := strconv.Atoi(matches[2])
+
+	if err != nil {
+		return nil, err
+	}
+
+	rating, err := strconv.ParseFloat(strings.Split(doc.Find("[itemprop=\"ratingValue\"]").First().Text(), "/")[0], 64)
+
+	if err != nil {
+		return nil, err
+	}
+
+	numRatings, err := utils.StringToInt(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Movie{
 		Title:      title,
 		Year:       year,
 		Rating:     rating,
 		NumRatings: numRatings,
-	}
+	}, nil
 }
 
 func ExtractMovieLinks(url string) ([]string, error) {
@@ -113,4 +135,46 @@ func GetHTTPResponse(url string) (*http.Response, error) {
 	}
 
 	return resp, err
+}
+
+func StartFromSitemap() {
+	sitemapLinks, err := ExtractSitemapLinks()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, sitemapLink := range sitemapLinks {
+		time.Sleep(time.Second * 5)
+		movieLinks, err := ExtractMovieLinks(sitemapLink)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, movieLink := range movieLinks {
+			time.Sleep(time.Second * 5)
+			resp, err := GetHTTPResponse(movieLink)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			doc, err := goquery.NewDocumentFromResponse(resp)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			movie, err := ExtractMovieInfo(doc)
+
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			fmt.Println(movie)
+			resp.Body.Close()
+		}
+	}
 }
