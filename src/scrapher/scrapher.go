@@ -18,6 +18,8 @@ import (
 )
 
 var re = regexp.MustCompile(`(.+) \((\d{4})\)`)
+var movieIDRegex = regexp.MustCompile(`/(tt\d{7})/`)
+var movieURLRegex = regexp.MustCompile(`^/title/tt\d{7}/\?`)
 
 func ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
@@ -176,5 +178,62 @@ func StartFromSitemap() {
 			fmt.Println(movie)
 			resp.Body.Close()
 		}
+	}
+}
+
+func StartFromURL(url string) {
+	links := []string{url[19:]}
+	visited := map[string]bool{}
+
+	for len(links) > 0 {
+		link := links[0]
+		links = links[1:]
+		movieID := movieIDRegex.FindStringSubmatch(link)[1]
+
+		if _, ok := visited[movieID]; ok {
+			continue
+		}
+
+		visited[movieID] = true
+		url := "http://www.imdb.com" + link
+		resp, err := GetHTTPResponse(url)
+		time.Sleep(time.Second * 5)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		doc, err := goquery.NewDocumentFromResponse(resp)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		movie, err := ExtractMovieInfo(doc)
+
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		fmt.Printf("%s (%d)\n", movie.Title, movie.Year)
+		nodes := doc.Find("a").Nodes
+
+		for _, node := range nodes {
+			for _, attr := range node.Attr {
+				if attr.Key == "href" {
+					if movieURLRegex.MatchString(attr.Val) {
+						movieID := movieIDRegex.FindStringSubmatch(attr.Val)[1]
+
+						if _, ok := visited[movieID]; !ok {
+							links = append(links, attr.Val)
+						}
+					}
+					break
+				}
+			}
+		}
+
+		resp.Body.Close()
 	}
 }

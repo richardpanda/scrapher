@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	scrapher.StartFromSitemap()
+	scrapher.StartFromURL("http://www.imdb.com/title/tt0468569/?ref_=rvi_tt")
 }
