@@ -21,7 +21,7 @@ var re = regexp.MustCompile(`(.+) \((\d{4})\)`)
 var movieIDRegex = regexp.MustCompile(`/(tt\d{7})/`)
 var movieURLRegex = regexp.MustCompile(`^/title/tt\d{7}/\?`)
 
-func ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
+func ExtractMovieInfo(url string, doc *goquery.Document) (*models.Movie, error) {
 	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
 
 	if len(matches) < 3 {
@@ -49,9 +49,10 @@ func ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 
 	return &models.Movie{
 		Title:      title,
-		Year:       year,
-		Rating:     rating,
+		URL:        url,
 		NumRatings: numRatings,
+		Rating:     rating,
+		Year:       year,
 	}, nil
 }
 
@@ -168,7 +169,7 @@ func StartFromSitemap() {
 				log.Fatal(err)
 			}
 
-			movie, err := ExtractMovieInfo(doc)
+			movie, err := ExtractMovieInfo(movieLink, doc)
 
 			if err != nil {
 				fmt.Println(err)
@@ -182,20 +183,19 @@ func StartFromSitemap() {
 }
 
 func StartFromURL(url string) {
-	links := []string{url[19:]}
+	movieIDs := []string{movieIDRegex.FindStringSubmatch(url)[1]}
 	visited := map[string]bool{}
 
-	for len(links) > 0 {
-		link := links[0]
-		links = links[1:]
-		movieID := movieIDRegex.FindStringSubmatch(link)[1]
+	for len(movieIDs) > 0 {
+		movieID := movieIDs[0]
+		movieIDs = movieIDs[1:]
 
 		if _, ok := visited[movieID]; ok {
 			continue
 		}
 
 		visited[movieID] = true
-		url := "http://www.imdb.com" + link
+		url := "http://www.imdb.com/title/" + movieID
 		resp, err := GetHTTPResponse(url)
 		time.Sleep(time.Second * 5)
 
@@ -209,10 +209,10 @@ func StartFromURL(url string) {
 			log.Fatal(err)
 		}
 
-		movie, err := ExtractMovieInfo(doc)
+		movie, err := ExtractMovieInfo(url, doc)
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("%s\t%s\n", url, err)
 			continue
 		}
 
@@ -226,7 +226,7 @@ func StartFromURL(url string) {
 						movieID := movieIDRegex.FindStringSubmatch(attr.Val)[1]
 
 						if _, ok := visited[movieID]; !ok {
-							links = append(links, attr.Val)
+							movieIDs = append(movieIDs, movieID)
 						}
 					}
 					break
