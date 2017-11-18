@@ -129,6 +129,24 @@ func ExtractSitemapLinks() ([]string, error) {
 	return links, nil
 }
 
+func FetchHTMLDocument(url string) (*goquery.Document, error) {
+	resp, err := GetHTTPResponse(url)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	doc, err := goquery.NewDocumentFromResponse(resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return doc, nil
+}
+
 func GetHTTPResponse(url string) (*http.Response, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
@@ -204,14 +222,8 @@ func StartFromURL(url string) {
 
 		visited[movieID] = true
 		url := "http://www.imdb.com/title/" + movieID
-		resp, err := GetHTTPResponse(url)
+		doc, err := FetchHTMLDocument(url)
 		time.Sleep(time.Second * 5)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		doc, err := goquery.NewDocumentFromResponse(resp)
 
 		if err != nil {
 			log.Fatal(err)
@@ -241,7 +253,5 @@ func StartFromURL(url string) {
 				}
 			}
 		}
-
-		resp.Body.Close()
 	}
 }
