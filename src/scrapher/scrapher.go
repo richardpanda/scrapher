@@ -71,7 +71,7 @@ func ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 	}, nil
 }
 
-func ExtractMovieLinks(url string) ([]string, error) {
+func ExtractMovieURLs(url string) ([]string, error) {
 	resp, err := GetHTTPResponse(url)
 
 	if err != nil {
@@ -93,16 +93,16 @@ func ExtractMovieLinks(url string) ([]string, error) {
 		return nil, err
 	}
 
-	links := make([]string, len(u.URLs))
+	urls := make([]string, len(u.URLs))
 
 	for i, url := range u.URLs {
-		links[i] = url.Location
+		urls[i] = url.Location
 	}
 
-	return links, nil
+	return urls, nil
 }
 
-func ExtractSitemapLinks() ([]string, error) {
+func ExtractSitemapURLs() ([]string, error) {
 	url := "http://www.imdb.com/sitemap/index.xml.gz"
 	resp, err := GetHTTPResponse(url)
 
@@ -125,15 +125,15 @@ func ExtractSitemapLinks() ([]string, error) {
 		return nil, err
 	}
 
-	links := []string{}
+	urls := []string{}
 
 	for _, sitemap := range s.Sitemaps {
 		if strings.HasPrefix(sitemap.Location, "http://www.imdb.com/sitemap/title") {
-			links = append(links, sitemap.Location)
+			urls = append(urls, sitemap.Location)
 		}
 	}
 
-	return links, nil
+	return urls, nil
 }
 
 func FetchHTMLDocument(url string) (*goquery.Document, error) {
@@ -230,23 +230,23 @@ func (s *Scrapher) ProcessURL() (*models.Movie, error) {
 }
 
 func StartFromSitemap() {
-	sitemapLinks, err := ExtractSitemapLinks()
+	sitemapURLs, err := ExtractSitemapURLs()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, sitemapLink := range sitemapLinks {
+	for _, sitemapURL := range sitemapURLs {
 		time.Sleep(time.Second * 5)
-		movieLinks, err := ExtractMovieLinks(sitemapLink)
+		movieURLs, err := ExtractMovieURLs(sitemapURL)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		for _, movieLink := range movieLinks {
+		for _, movieURL := range movieURLs {
 			time.Sleep(time.Second * 5)
-			resp, err := GetHTTPResponse(movieLink)
+			resp, err := GetHTTPResponse(movieURL)
 
 			if err != nil {
 				log.Fatal(err)
