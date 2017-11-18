@@ -21,7 +21,7 @@ var re = regexp.MustCompile(`(.+) \((\d{4})\)`)
 var movieIDRegex = regexp.MustCompile(`/(tt\d{7})/`)
 var movieURLRegex = regexp.MustCompile(`^/title/tt\d{7}/\?`)
 
-func ExtractMovieInfo(url string, doc *goquery.Document) (*models.Movie, error) {
+func ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
 
 	if len(matches) < 3 {
@@ -46,6 +46,14 @@ func ExtractMovieInfo(url string, doc *goquery.Document) (*models.Movie, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	id, ok := doc.Find("meta[property=\"pageId\"]").First().Attr("content")
+
+	if !ok {
+		return nil, errors.New("cannot find movie id")
+	}
+
+	url := "http://www.imdb.com/title/" + id
 
 	return &models.Movie{
 		Title:      title,
@@ -169,7 +177,7 @@ func StartFromSitemap() {
 				log.Fatal(err)
 			}
 
-			movie, err := ExtractMovieInfo(movieLink, doc)
+			movie, err := ExtractMovieInfo(doc)
 
 			if err != nil {
 				fmt.Println(err)
@@ -209,7 +217,7 @@ func StartFromURL(url string) {
 			log.Fatal(err)
 		}
 
-		movie, err := ExtractMovieInfo(url, doc)
+		movie, err := ExtractMovieInfo(doc)
 
 		if err != nil {
 			fmt.Printf("%s\t%s\n", url, err)
