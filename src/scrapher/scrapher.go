@@ -17,9 +17,11 @@ import (
 	"github.com/richardpanda/scrapher/src/utils"
 )
 
-var re = regexp.MustCompile(`(.+) \((\d{4})\)`)
-var movieIDRegex = regexp.MustCompile(`/(tt\d{7})/`)
-var movieURLRegex = regexp.MustCompile(`^/title/tt\d{7}/\?`)
+var (
+	re            = regexp.MustCompile(`(.+) \((\d{4})\)`)
+	movieIDRegex  = regexp.MustCompile(`/(tt\d{7})/`)
+	movieURLRegex = regexp.MustCompile(`^/title/tt\d{7}/\?`)
+)
 
 func ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
