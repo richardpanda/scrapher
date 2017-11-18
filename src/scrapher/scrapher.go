@@ -17,9 +17,14 @@ import (
 	"github.com/richardpanda/scrapher/src/utils"
 )
 
+type Scrapher struct {
+	movieIDs []string
+	visited  map[string]bool
+}
+
 var (
 	re            = regexp.MustCompile(`(.+) \((\d{4})\)`)
-	movieIDRegex  = regexp.MustCompile(`/(tt\d{7})/`)
+	movieIDRegex  = regexp.MustCompile(`/(tt\d{7})/?`)
 	movieURLRegex = regexp.MustCompile(`^/title/tt\d{7}/\?`)
 )
 
@@ -166,6 +171,62 @@ func GetHTTPResponse(url string) (*http.Response, error) {
 	}
 
 	return resp, err
+}
+
+func (s *Scrapher) IsNotEmpty() bool {
+	return len(s.movieIDs) != 0
+}
+
+func New(url string) *Scrapher {
+	movieID := movieIDRegex.FindStringSubmatch(url)[1]
+
+	return &Scrapher{
+		movieIDs: []string{movieID},
+		visited:  map[string]bool{},
+	}
+}
+
+func (s *Scrapher) ProcessURL() (*models.Movie, error) {
+	movieID := s.movieIDs[0]
+	s.movieIDs = s.movieIDs[1:]
+
+	if _, ok := s.visited[movieID]; ok {
+		return nil, errors.New("visited movie already")
+	}
+
+	s.visited[movieID] = true
+	url := "http://www.imdb.com/title/" + movieID
+	doc, err := FetchHTMLDocument(url)
+	time.Sleep(time.Second * 5)
+
+	if err != nil {
+		return nil, err
+	}
+
+	movie, err := ExtractMovieInfo(doc)
+
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := doc.Find("a").Nodes
+
+	for _, node := range nodes {
+		for _, attr := range node.Attr {
+			if attr.Key == "href" {
+				if movieURLRegex.MatchString(attr.Val) {
+					movieID := movieIDRegex.FindStringSubmatch(attr.Val)[1]
+
+					if _, ok := s.visited[movieID]; !ok {
+						s.movieIDs = append(s.movieIDs, movieID)
+					}
+				}
+				break
+			}
+		}
+	}
+
+	return movie, nil
 }
 
 func StartFromSitemap() {
