@@ -2,12 +2,19 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/richardpanda/scrapher/src/scrapher"
 )
 
 func main() {
-	s := scrapher.New("http://www.imdb.com/title/tt0468569")
+	if len(os.Args) < 2 {
+		log.Fatal("url is missing")
+	}
+
+	url := os.Args[1]
+	s := scrapher.New(url)
 
 	for s.IsNotEmpty() {
 		movie, err := s.ProcessURL()
