@@ -5,10 +5,12 @@ import (
 	"log"
 	"os"
 
+	"github.com/richardpanda/scrapher/src/scraper"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/richardpanda/scrapher/src/models"
-	"github.com/richardpanda/scrapher/src/scrapher"
+	"github.com/richardpanda/scrapher/src/scraper/imdb"
 )
 
 func main() {
@@ -30,16 +32,6 @@ func main() {
 	db.AutoMigrate(&models.Movie{})
 
 	url := os.Args[1]
-	s := scrapher.New(url)
-
-	for s.IsNotEmpty() {
-		movie, err := s.ProcessURL()
-
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		db.Create(movie)
-	}
+	i := imdb.New(url)
+	scraper.Start(db, i)
 }

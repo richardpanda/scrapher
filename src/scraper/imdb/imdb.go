@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/richardpanda/scrapher/src/models"
@@ -13,54 +12,26 @@ import (
 )
 
 type IMDB struct {
-	movieIDs map[string]bool
-	visited  map[string]bool
+	MovieIDs map[string]bool
+	Visited  map[string]bool
 }
 
 var (
-	re            = regexp.MustCompile(`(.+) \((\d{4})\)`)
-	movieIDRegex  = regexp.MustCompile(`/(tt\d{7})/?`)
-	movieURLRegex = regexp.MustCompile(`^/title/tt\d{7}/\?`)
+	movieTitleAndYearRegex = regexp.MustCompile(`(.+) \((\d{4})\)`)
+	movieIDRegex           = regexp.MustCompile(`/(tt\d{7})/?`)
+	movieURLRegex          = regexp.MustCompile(`^/title/tt\d{7}/\?`)
 )
 
 func New(url string) *IMDB {
 	movieID := movieIDRegex.FindStringSubmatch(url)[1]
 
 	return &IMDB{
-		movieIDs: map[string]bool{movieID: true},
-		visited:  map[string]bool{},
+		MovieIDs: map[string]bool{movieID: true},
+		Visited:  map[string]bool{},
 	}
 }
 
-func (i *IMDB) IsNotEmpty() bool {
-	return len(i.movieIDs) != 0
-}
-
-func (i *IMDB) ProcessURL() (*models.Movie, error) {
-	var movieID string
-
-	for id := range i.movieIDs {
-		movieID = id
-		break
-	}
-
-	delete(i.movieIDs, movieID)
-
-	i.visited[movieID] = true
-	url := "http://www.imdb.com/title/" + movieID
-	doc, err := utils.FetchHTMLDocument(url)
-	time.Sleep(time.Second * 5)
-
-	if err != nil {
-		return nil, err
-	}
-
-	movie, err := extractMovieInfo(doc)
-
-	if err != nil {
-		return nil, err
-	}
-
+func (i *IMDB) AddURLs(doc *goquery.Document) {
 	nodes := doc.Find("a").Nodes
 
 	for _, node := range nodes {
@@ -69,20 +40,19 @@ func (i *IMDB) ProcessURL() (*models.Movie, error) {
 				if movieURLRegex.MatchString(attr.Val) {
 					movieID := movieIDRegex.FindStringSubmatch(attr.Val)[1]
 
-					if _, ok := i.visited[movieID]; !ok {
-						i.movieIDs[movieID] = true
+					if _, ok := i.Visited[movieID]; !ok {
+						i.MovieIDs[movieID] = true
 					}
 				}
 				break
 			}
 		}
 	}
-
-	return movie, nil
 }
 
-func extractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
-	matches := re.FindStringSubmatch(strings.TrimSpace(doc.Find("[itemprop=\"name\"]").First().Text()))
+func (i *IMDB) ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
+	str := doc.Find("[itemprop=\"name\"]").First().Text()
+	matches := movieTitleAndYearRegex.FindStringSubmatch(strings.TrimSpace(str))
 
 	if len(matches) < 3 {
 		return nil, errors.New("unable to parse title and year")
@@ -122,4 +92,31 @@ func extractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 		Rating:     rating,
 		Year:       year,
 	}, nil
+}
+
+func (i *IMDB) IsNotEmpty() bool {
+	return len(i.MovieIDs) != 0
+}
+
+func (i *IMDB) FetchHTMLDocument(movieID string) (*goquery.Document, error) {
+	url := "http://www.imdb.com/title/" + movieID
+
+	return utils.FetchHTMLDocument(url)
+}
+
+func (i *IMDB) Pop() string {
+	var movieID string
+
+	for id := range i.MovieIDs {
+		movieID = id
+		break
+	}
+
+	delete(i.MovieIDs, movieID)
+
+	return movieID
+}
+
+func (i *IMDB) SetVisited(movieID string) {
+	i.Visited[movieID] = true
 }
