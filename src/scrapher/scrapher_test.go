@@ -46,6 +46,7 @@ func TestProcessURL(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.True(t, len(s.movieIDs) > 1)
+	assert.Equal(t, len(s.visited), 1)
 	assert.NotEqual(t, 0, movie.NumRatings)
 	assert.NotEqual(t, 0, movie.Rating)
 	assert.Equal(t, "The Dark Knight", movie.Title)

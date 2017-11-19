@@ -18,7 +18,7 @@ import (
 )
 
 type Scrapher struct {
-	movieIDs []string
+	movieIDs map[string]bool
 	visited  map[string]bool
 }
 
@@ -181,18 +181,20 @@ func New(url string) *Scrapher {
 	movieID := movieIDRegex.FindStringSubmatch(url)[1]
 
 	return &Scrapher{
-		movieIDs: []string{movieID},
+		movieIDs: map[string]bool{movieID: true},
 		visited:  map[string]bool{},
 	}
 }
 
 func (s *Scrapher) ProcessURL() (*models.Movie, error) {
-	movieID := s.movieIDs[0]
-	s.movieIDs = s.movieIDs[1:]
+	var movieID string
 
-	if _, ok := s.visited[movieID]; ok {
-		return nil, errors.New("visited movie already")
+	for id, _ := range s.movieIDs {
+		movieID = id
+		break
 	}
+
+	delete(s.movieIDs, movieID)
 
 	s.visited[movieID] = true
 	url := "http://www.imdb.com/title/" + movieID
@@ -218,7 +220,7 @@ func (s *Scrapher) ProcessURL() (*models.Movie, error) {
 					movieID := movieIDRegex.FindStringSubmatch(attr.Val)[1]
 
 					if _, ok := s.visited[movieID]; !ok {
-						s.movieIDs = append(s.movieIDs, movieID)
+						s.movieIDs[movieID] = true
 					}
 				}
 				break
