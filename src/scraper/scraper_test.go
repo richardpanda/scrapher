@@ -9,7 +9,7 @@ import (
 	"github.com/richardpanda/scrapher/src/scraper/imdb"
 )
 
-func TestVisitUrl(t *testing.T) {
+func TestVisitURL(t *testing.T) {
 	i := imdb.New("http://www.imdb.com/title/tt0468569")
 	movie, err := visitURL(i)
 	time.Sleep(5 * time.Second)
