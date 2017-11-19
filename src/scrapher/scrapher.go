@@ -1,11 +1,7 @@
 package scrapher
 
 import (
-	"encoding/xml"
 	"errors"
-	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -69,71 +65,6 @@ func ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 		Rating:     rating,
 		Year:       year,
 	}, nil
-}
-
-func ExtractMovieURLs(url string) ([]string, error) {
-	resp, err := GetHTTPResponse(url)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	b, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	u := models.URLSet{}
-	err = xml.Unmarshal(b, &u)
-
-	if err != nil {
-		return nil, err
-	}
-
-	urls := make([]string, len(u.URLs))
-
-	for i, url := range u.URLs {
-		urls[i] = url.Location
-	}
-
-	return urls, nil
-}
-
-func ExtractSitemapURLs() ([]string, error) {
-	url := "http://www.imdb.com/sitemap/index.xml.gz"
-	resp, err := GetHTTPResponse(url)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	b, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	s := models.SitemapIndex{}
-	err = xml.Unmarshal(b, &s)
-
-	if err != nil {
-		return nil, err
-	}
-
-	urls := []string{}
-
-	for _, sitemap := range s.Sitemaps {
-		if strings.HasPrefix(sitemap.Location, "http://www.imdb.com/sitemap/title") {
-			urls = append(urls, sitemap.Location)
-		}
-	}
-
-	return urls, nil
 }
 
 func FetchHTMLDocument(url string) (*goquery.Document, error) {
@@ -229,46 +160,4 @@ func (s *Scrapher) ProcessURL() (*models.Movie, error) {
 	}
 
 	return movie, nil
-}
-
-func StartFromSitemap() {
-	sitemapURLs, err := ExtractSitemapURLs()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, sitemapURL := range sitemapURLs {
-		time.Sleep(time.Second * 5)
-		movieURLs, err := ExtractMovieURLs(sitemapURL)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, movieURL := range movieURLs {
-			time.Sleep(time.Second * 5)
-			resp, err := GetHTTPResponse(movieURL)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			doc, err := goquery.NewDocumentFromResponse(resp)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			movie, err := ExtractMovieInfo(doc)
-
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			fmt.Println(movie)
-			resp.Body.Close()
-		}
-	}
 }
