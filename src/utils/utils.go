@@ -26,8 +26,8 @@ func FetchHTMLDocument(url string) (*goquery.Document, error) {
 	return doc, nil
 }
 
-func StringToInt64(s string) (int64, error) {
-	return strconv.ParseInt(strings.Join(strings.Split(s, ","), ""), 10, 64)
+func StringToInt(s string) (int, error) {
+	return strconv.Atoi(strings.Join(strings.Split(s, ","), ""))
 }
 
 func getHTTPResponse(url string) (*http.Response, error) {

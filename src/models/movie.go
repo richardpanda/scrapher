@@ -1,19 +1,17 @@
 package models
 
 import (
-	"database/sql"
-
 	"github.com/jinzhu/gorm"
 )
 
 type Movie struct {
 	gorm.Model
-	IMDBNumRatings sql.NullInt64
-	IMDBRating     sql.NullFloat64
-	IMDBURL        sql.NullString
-	RTNumRatings   sql.NullInt64
-	RTRating       sql.NullFloat64
-	RTURL          sql.NullString
-	Title          string `gorm:"unique_index"`
+	IMDBNumRatings int     `gorm:"default:NULL"`
+	IMDBRating     float64 `gorm:"default:NULL"`
+	IMDBURL        string  `gorm:"default:NULL"`
+	RTNumRatings   int     `gorm:"default:NULL"`
+	RTRating       float64 `gorm:"default:NULL"`
+	RTURL          string  `gorm:"default:NULL"`
+	Title          string  `gorm:"unique_index"`
 	Year           int
 }
