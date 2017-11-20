@@ -42,10 +42,10 @@ func TestExtractMovieInfo(t *testing.T) {
 	movie, err := i.ExtractMovieInfo(doc)
 
 	assert.NoError(t, err)
-	assert.NotZero(t, movie.NumRatings)
-	assert.NotZero(t, movie.Rating)
+	assert.True(t, movie.IMDBNumRatings.Valid)
+	assert.True(t, movie.IMDBRating.Valid)
+	assert.Equal(t, "http://www.imdb.com/title/tt0468569", movie.IMDBURL.String)
 	assert.Equal(t, "The Dark Knight", movie.Title)
-	assert.Equal(t, "http://www.imdb.com/title/tt0468569", movie.URL)
 	assert.Equal(t, 2008, movie.Year)
 }
 

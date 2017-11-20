@@ -1,6 +1,7 @@
 package imdb
 
 import (
+	"database/sql"
 	"errors"
 	"regexp"
 	"strconv"
@@ -71,7 +72,7 @@ func (i *IMDB) ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 		return nil, err
 	}
 
-	numRatings, err := utils.StringToInt(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
+	numRatings, err := utils.StringToInt64(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
 
 	if err != nil {
 		return nil, err
@@ -86,11 +87,11 @@ func (i *IMDB) ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 	url := "http://www.imdb.com/title/" + id
 
 	return &models.Movie{
-		Title:      title,
-		URL:        url,
-		NumRatings: numRatings,
-		Rating:     rating,
-		Year:       year,
+		IMDBNumRatings: sql.NullInt64{Int64: numRatings, Valid: true},
+		IMDBRating:     sql.NullFloat64{Float64: rating, Valid: true},
+		IMDBURL:        sql.NullString{String: url, Valid: true},
+		Title:          title,
+		Year:           year,
 	}, nil
 }
 
