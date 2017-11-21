@@ -28,7 +28,14 @@ func Start(db *gorm.DB, s Scraper) {
 			continue
 		}
 
-		db.Create(movie)
+		m := &models.Movie{}
+		result := db.Where("title = ? AND year = ?", movie.Title, movie.Year).First(m)
+
+		if result.RowsAffected == 1 {
+			db.Model(m).Update(movie)
+		} else {
+			db.Create(movie)
+		}
 	}
 }
 
