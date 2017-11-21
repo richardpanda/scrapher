@@ -12,6 +12,6 @@ type Movie struct {
 	RTNumRatings   int     `gorm:"default:NULL"`
 	RTRating       float64 `gorm:"default:NULL"`
 	RTURL          string  `gorm:"default:NULL"`
-	Title          string  `gorm:"unique_index"`
-	Year           int
+	Title          string  `gorm:"unique_index:idx_title_year"`
+	Year           int     `gorm:"unique_index:idx_title_year"`
 }
