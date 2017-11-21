@@ -34,10 +34,25 @@ func main() {
 	rt := rottentomatoes.New("https://www.rottentomatoes.com/m/the_dark_knight")
 	scrapers := []scraper.Scraper{i, rt}
 
+	fmt.Println("scraping")
+	defer fmt.Println("done scraping")
+
 	for _, s := range scrapers {
 		wg.Add(1)
 		go func(s scraper.Scraper) {
 			defer wg.Done()
+
+			switch s.(type) {
+			case *imdb.IMDB:
+				fmt.Println("imdb scraper started")
+				defer fmt.Println("imdb scraper finished")
+			case *rottentomatoes.RottenTomatoes:
+				fmt.Println("rotten tomatoes scraper started")
+				defer fmt.Println("rotten tomatoes scraper finished")
+			default:
+				log.Fatal("unknown scraper type")
+			}
+
 			scraper.Start(db, s)
 		}(s)
 	}

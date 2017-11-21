@@ -33,8 +33,10 @@ func Start(db *gorm.DB, s Scraper) {
 
 		if result.RowsAffected == 1 {
 			db.Model(m).Update(movie)
+			fmt.Printf("updated %s (%d)\n", movie.Title, movie.Year)
 		} else {
 			db.Create(movie)
+			fmt.Printf("added %s (%d)\n", movie.Title, movie.Year)
 		}
 	}
 }

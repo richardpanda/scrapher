@@ -2,6 +2,7 @@ package rottentomatoes
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,11 +52,18 @@ func (rt *RottenTomatoes) AddURLs(doc *goquery.Document) {
 }
 
 func (rt *RottenTomatoes) ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
+	url, ok := doc.Find(`meta[property="og:url"]`).First().Attr("content")
+
+	if !ok {
+		return nil, errors.New("unable to find url from rotten tomatoes")
+	}
+
 	s := strings.TrimSpace(doc.Find("h1.title.hidden-xs").First().Text())
 	matches := movieTitleAndYearRegex.FindStringSubmatch(s)
 
 	if len(matches) < 3 {
-		return nil, errors.New("unable to parse title and year from rotten tomatoes")
+		msg := fmt.Sprintf("unable to parse title and year from rotten tomatoes (%s)", url)
+		return nil, errors.New(msg)
 	}
 
 	title := matches[1]
@@ -68,29 +76,27 @@ func (rt *RottenTomatoes) ExtractMovieInfo(doc *goquery.Document) (*models.Movie
 	ratings := strings.TrimSpace(doc.Find("div.audience-info.hidden-xs.superPageFontColor").First().Text())
 
 	if !movieRatingRegex.MatchString(ratings) {
-		return nil, errors.New("unable to parse rotten tomatoes rating from rotten tomatoes")
+		msg := fmt.Sprintf("unable to find ratings from rotten tomatoes (%s)", url)
+		return nil, errors.New(msg)
 	}
 
 	rating, err := strconv.ParseFloat(movieRatingRegex.FindStringSubmatch(ratings)[1], 64)
 
 	if err != nil {
-		return nil, err
+		msg := fmt.Sprintf("unable to parse ratings from rotten tomatoes (%s)", url)
+		return nil, errors.New(msg)
 	}
 
 	if !numRatingsRegex.MatchString(ratings) {
-		return nil, errors.New("unable to parse number of ratings from rotten tomatoes")
+		msg := fmt.Sprintf("unable to find number of ratings from rotten tomatoes (%s)", url)
+		return nil, errors.New(msg)
 	}
 
 	numRatings, err := utils.StringToInt(numRatingsRegex.FindStringSubmatch(ratings)[1])
 
 	if err != nil {
-		return nil, err
-	}
-
-	url, ok := doc.Find(`meta[property="og:url"]`).First().Attr("content")
-
-	if !ok {
-		return nil, errors.New("unable to find url from rotten tomatoes")
+		msg := fmt.Sprintf("unable to parse number of ratings from rotten tomatoes (%s)", url)
+		return nil, errors.New(msg)
 	}
 
 	return &models.Movie{

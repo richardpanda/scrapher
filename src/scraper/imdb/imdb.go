@@ -2,6 +2,7 @@ package imdb
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,11 +52,19 @@ func (i *IMDB) AddURLs(doc *goquery.Document) {
 }
 
 func (i *IMDB) ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
+	id, ok := doc.Find("meta[property=\"pageId\"]").First().Attr("content")
+
+	if !ok {
+		return nil, errors.New("cannot find movie id from imdb")
+	}
+
+	url := "http://www.imdb.com/title/" + id
 	str := doc.Find("[itemprop=\"name\"]").First().Text()
 	matches := movieTitleAndYearRegex.FindStringSubmatch(strings.TrimSpace(str))
 
 	if len(matches) < 3 {
-		return nil, errors.New("unable to parse title and year")
+		msg := fmt.Sprintf("unable to parse title and year from imdb (%s)", url)
+		return nil, errors.New(msg)
 	}
 
 	title := matches[1]
@@ -68,22 +77,16 @@ func (i *IMDB) ExtractMovieInfo(doc *goquery.Document) (*models.Movie, error) {
 	rating, err := strconv.ParseFloat(strings.Split(doc.Find("[itemprop=\"ratingValue\"]").First().Text(), "/")[0], 64)
 
 	if err != nil {
-		return nil, err
+		msg := fmt.Sprintf("unable to parse rating from imdb (%s)", url)
+		return nil, errors.New(msg)
 	}
 
 	numRatings, err := utils.StringToInt(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
 
 	if err != nil {
-		return nil, err
+		msg := fmt.Sprintf("unable to parse number of ratings from imdb (%s)", url)
+		return nil, errors.New(msg)
 	}
-
-	id, ok := doc.Find("meta[property=\"pageId\"]").First().Attr("content")
-
-	if !ok {
-		return nil, errors.New("cannot find movie id")
-	}
-
-	url := "http://www.imdb.com/title/" + id
 
 	return &models.Movie{
 		IMDBNumRatings: numRatings,
