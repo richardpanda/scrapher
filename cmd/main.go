@@ -6,13 +6,13 @@ import (
 	"os"
 	"sync"
 
-	"github.com/richardpanda/scrapher/src/scraper"
-
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/richardpanda/scrapher/src/controllers/imdb"
+	"github.com/richardpanda/scrapher/src/controllers/parser"
+	"github.com/richardpanda/scrapher/src/controllers/rottentomatoes"
+	"github.com/richardpanda/scrapher/src/controllers/scraper"
 	"github.com/richardpanda/scrapher/src/models"
-	"github.com/richardpanda/scrapher/src/scraper/imdb"
-	"github.com/richardpanda/scrapher/src/scraper/rottentomatoes"
 )
 
 func main() {
@@ -32,17 +32,17 @@ func main() {
 
 	i := imdb.New("http://www.imdb.com/title/tt0468569")
 	rt := rottentomatoes.New("https://www.rottentomatoes.com/m/the_dark_knight")
-	scrapers := []scraper.Scraper{i, rt}
+	parsers := []parser.Parser{i, rt}
 
 	fmt.Println("scraping")
 	defer fmt.Println("done scraping")
 
-	for _, s := range scrapers {
+	for _, p := range parsers {
 		wg.Add(1)
-		go func(s scraper.Scraper) {
+		go func(p parser.Parser) {
 			defer wg.Done()
 
-			switch s.(type) {
+			switch p.(type) {
 			case *imdb.IMDB:
 				fmt.Println("imdb scraper started")
 				defer fmt.Println("imdb scraper finished")
@@ -53,8 +53,9 @@ func main() {
 				log.Fatal("unknown scraper type")
 			}
 
-			scraper.Start(db, s)
-		}(s)
+			s := scraper.New(db, p)
+			s.Start()
+		}(p)
 	}
 
 	wg.Wait()
