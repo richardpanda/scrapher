@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/richardpanda/scrapher/src/models"
-	"github.com/richardpanda/scrapher/src/utils"
 )
 
 type IMDB struct {
@@ -28,7 +26,7 @@ func NewIMDB(url string) *IMDB {
 
 func (i *IMDB) HTMLDocument(movieID string) (*goquery.Document, error) {
 	url := "http://www.imdb.com/title/" + movieID
-	return utils.FetchHTMLDocument(url)
+	return FetchHTMLDocument(url)
 }
 
 func (i *IMDB) MovieIDsFromDoc(doc *goquery.Document) map[string]bool {
@@ -48,7 +46,7 @@ func (i *IMDB) MovieIDsFromDoc(doc *goquery.Document) map[string]bool {
 	return movieIDs
 }
 
-func (i *IMDB) MovieInfo(doc *goquery.Document) (*models.Movie, error) {
+func (i *IMDB) MovieInfo(doc *goquery.Document) (*Movie, error) {
 	id, ok := doc.Find("meta[property=\"pageId\"]").First().Attr("content")
 	if !ok {
 		return nil, errors.New("cannot find movie id from imdb")
@@ -75,13 +73,13 @@ func (i *IMDB) MovieInfo(doc *goquery.Document) (*models.Movie, error) {
 		return nil, errors.New(msg)
 	}
 
-	numRatings, err := utils.StringToInt(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
+	numRatings, err := StringToInt(doc.Find("[itemprop=\"ratingCount\"]").First().Text())
 	if err != nil {
 		msg := fmt.Sprintf("unable to parse number of ratings from imdb (%s)", url)
 		return nil, errors.New(msg)
 	}
 
-	return &models.Movie{
+	return &Movie{
 		IMDBNumRatings: numRatings,
 		IMDBRating:     rating,
 		IMDBURL:        url,

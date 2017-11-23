@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/richardpanda/scrapher/src/models"
-	"github.com/richardpanda/scrapher/src/utils"
 )
 
 type RottenTomatoes struct {
@@ -29,7 +27,7 @@ func NewRottenTomatoes(url string) *RottenTomatoes {
 
 func (rt *RottenTomatoes) HTMLDocument(movieID string) (*goquery.Document, error) {
 	url := "https://www.rottentomatoes.com/m/" + movieID
-	return utils.FetchHTMLDocument(url)
+	return FetchHTMLDocument(url)
 }
 
 func (rt *RottenTomatoes) MovieIDsFromDoc(doc *goquery.Document) map[string]bool {
@@ -49,7 +47,7 @@ func (rt *RottenTomatoes) MovieIDsFromDoc(doc *goquery.Document) map[string]bool
 	return movieIDs
 }
 
-func (rt *RottenTomatoes) MovieInfo(doc *goquery.Document) (*models.Movie, error) {
+func (rt *RottenTomatoes) MovieInfo(doc *goquery.Document) (*Movie, error) {
 	url, ok := doc.Find(`meta[property="og:url"]`).First().Attr("content")
 	if !ok {
 		return nil, errors.New("unable to find url from rotten tomatoes")
@@ -84,13 +82,13 @@ func (rt *RottenTomatoes) MovieInfo(doc *goquery.Document) (*models.Movie, error
 		msg := fmt.Sprintf("unable to find number of ratings from rotten tomatoes (%s)", url)
 		return nil, errors.New(msg)
 	}
-	numRatings, err := utils.StringToInt(rtNumRatingsRegex.FindStringSubmatch(ratings)[1])
+	numRatings, err := StringToInt(rtNumRatingsRegex.FindStringSubmatch(ratings)[1])
 	if err != nil {
 		msg := fmt.Sprintf("unable to parse number of ratings from rotten tomatoes (%s)", url)
 		return nil, errors.New(msg)
 	}
 
-	return &models.Movie{
+	return &Movie{
 		RTNumRatings: numRatings,
 		RTRating:     rating,
 		RTURL:        url,

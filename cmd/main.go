@@ -6,8 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/richardpanda/scrapher/src"
-	"github.com/richardpanda/scrapher/src/models"
+	"github.com/richardpanda/scrapher"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -25,7 +24,7 @@ func main() {
 	}
 	defer db.Close()
 
-	db.AutoMigrate(&models.Movie{})
+	db.AutoMigrate(&scrapher.Movie{})
 
 	i := scrapher.NewIMDB("http://www.imdb.com/title/tt0468569")
 	rt := scrapher.NewRottenTomatoes("https://www.rottentomatoes.com/m/the_dark_knight")

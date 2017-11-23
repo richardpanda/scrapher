@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
-	"github.com/richardpanda/scrapher/src/models"
 )
 
 type Scraper struct {
@@ -34,7 +33,7 @@ func (s *Scraper) Start() {
 			continue
 		}
 
-		m := &models.Movie{}
+		m := Movie{}
 		result := s.DB.Where("title = ? AND year = ?", movie.Title, movie.Year).First(m)
 		if result.RowsAffected == 1 {
 			s.DB.Model(m).Update(movie)
@@ -56,7 +55,7 @@ func (s *Scraper) pop() string {
 	return movieID
 }
 
-func (s *Scraper) visitURL() (*models.Movie, error) {
+func (s *Scraper) visitURL() (*Movie, error) {
 	movieID := s.pop()
 	s.Visited[movieID] = true
 

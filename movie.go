@@ -1,4 +1,4 @@
-package models
+package scrapher
 
 import (
 	"github.com/jinzhu/gorm"
