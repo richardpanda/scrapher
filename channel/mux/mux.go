@@ -1,10 +1,18 @@
 package mux
 
-import "github.com/PuerkitoBio/goquery"
+import (
+	"github.com/PuerkitoBio/goquery"
+)
 
-func FanOut(in <-chan *goquery.Document, out1, out2 chan<- *goquery.Document) {
+type Mux struct {
+	Router map[string][]chan *goquery.Document
+}
+
+func (m *Mux) FanOut(in <-chan *goquery.Document) {
 	for doc := range in {
-		out1 <- doc
-		out2 <- doc
+		chs := m.Router[doc.Url.Hostname()]
+		for _, ch := range chs {
+			ch <- doc
+		}
 	}
 }

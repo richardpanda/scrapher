@@ -5,11 +5,18 @@ type Queue struct {
 	Visited map[string]bool
 }
 
-func New() *Queue {
-	return &Queue{
+func New(values ...string) *Queue {
+	out := &Queue{
 		Values:  []string{},
 		Visited: make(map[string]bool),
 	}
+
+	for _, value := range values {
+		out.Append(value)
+		out.SetVisited(value)
+	}
+
+	return out
 }
 
 func (q *Queue) Append(value string) {
