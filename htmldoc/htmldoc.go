@@ -35,25 +35,6 @@ func Get(url string) (*goquery.Document, error) {
 	return doc, err
 }
 
-// func Get(in <-chan string, out chan<- *goquery.Document, e chan<- error) {
-// 	for url := range in {
-// resp, err := getHTTPResponse(url)
-// if err != nil {
-// 	e <- err
-// 	continue
-// }
-// defer resp.Body.Close()
-
-// doc, err := goquery.NewDocumentFromResponse(resp)
-// if err != nil {
-// 	e <- err
-// 	continue
-// }
-
-// out <- doc
-// }
-// }
-
 func getHTTPResponse(url string) (*http.Response, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
