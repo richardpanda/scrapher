@@ -6,7 +6,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/jinzhu/gorm"
-	"github.com/richardpanda/scrapher/htmldoc"
+	"github.com/richardpanda/scrapher/html/document"
 	"github.com/richardpanda/scrapher/movie"
 )
 
@@ -18,7 +18,7 @@ var (
 
 func appendMovieIDsFromIMDB(a *App, in <-chan *goquery.Document) {
 	for doc := range in {
-		urls := htmldoc.ExtractURLs(doc)
+		urls := document.ExtractURLs(doc)
 		for _, url := range urls {
 			if !imdbMovieURLRegex.MatchString(url) {
 				continue
@@ -35,7 +35,7 @@ func appendMovieIDsFromIMDB(a *App, in <-chan *goquery.Document) {
 
 func appendMovieIDsFromRT(a *App, in <-chan *goquery.Document) {
 	for doc := range in {
-		urls := htmldoc.ExtractURLs(doc)
+		urls := document.ExtractURLs(doc)
 		for _, url := range urls {
 			if !rtMovieIDRegex.MatchString(url) {
 				continue

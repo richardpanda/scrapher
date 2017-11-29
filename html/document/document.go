@@ -1,4 +1,4 @@
-package htmldoc
+package document
 
 import (
 	"net/http"
