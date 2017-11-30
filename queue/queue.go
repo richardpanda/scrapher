@@ -1,26 +1,28 @@
 package queue
 
+import "github.com/richardpanda/scrapher/node"
+
 type Queue struct {
-	Values  []string
+	Values  []*node.QueueNode
 	Visited map[string]bool
 }
 
-func New(values ...string) *Queue {
+func New(queueNodes ...*node.QueueNode) *Queue {
 	out := &Queue{
-		Values:  []string{},
+		Values:  []*node.QueueNode{},
 		Visited: make(map[string]bool),
 	}
 
-	for _, value := range values {
-		out.Append(value)
-		out.SetVisited(value)
+	for _, qn := range queueNodes {
+		out.Append(qn)
+		out.SetVisited(qn.MovieID)
 	}
 
 	return out
 }
 
-func (q *Queue) Append(value string) {
-	q.Values = append(q.Values, value)
+func (q *Queue) Append(qn *node.QueueNode) {
+	q.Values = append(q.Values, qn)
 }
 
 func (q *Queue) HasVisited(value string) bool {
@@ -32,10 +34,10 @@ func (q *Queue) IsEmpty() bool {
 	return len(q.Values) == 0
 }
 
-func (q *Queue) Pop() string {
-	value := q.Values[0]
+func (q *Queue) Pop() *node.QueueNode {
+	qn := q.Values[0]
 	q.Values = q.Values[1:]
-	return value
+	return qn
 }
 
 func (q *Queue) SetVisited(value string) {

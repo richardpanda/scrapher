@@ -8,34 +8,41 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/richardpanda/scrapher/html/document"
 	"github.com/richardpanda/scrapher/movie"
+	"github.com/richardpanda/scrapher/node"
 	"github.com/richardpanda/scrapher/queue"
 )
 
 type RottenTomatoes struct {
 	*queue.Queue
-	URLChan chan string
+	CheckDepth    bool
+	QueueNodeChan chan *node.QueueNode
 }
 
 var movieIDRegex = regexp.MustCompile(`/m/(\w+)/?$`)
 
-func New(url string) *RottenTomatoes {
+func New(url string, depth int) *RottenTomatoes {
 	movieID := movieIDRegex.FindStringSubmatch(url)[1]
+	qn := &node.QueueNode{
+		Depth:   depth,
+		MovieID: movieID,
+	}
 	return &RottenTomatoes{
-		Queue:   queue.New(movieID),
-		URLChan: make(chan string),
+		Queue:         queue.New(qn),
+		CheckDepth:    depth >= 0,
+		QueueNodeChan: make(chan *node.QueueNode),
 	}
 }
 
 func (rt *RottenTomatoes) Init(db *gorm.DB) {
 	var (
-		spreadChan  = make(chan *goquery.Document)
-		appendChan  = make(chan *goquery.Document)
+		spreadChan  = make(chan *node.DocNode)
+		appendChan  = make(chan *node.DocNode)
 		extractChan = make(chan *goquery.Document)
 		dbChan      = make(chan *movie.Movie)
 		errChan     = make(chan error)
 	)
 
-	go getHTMLDocument(rt.URLChan, spreadChan, errChan)
+	go getHTMLDocument(rt.QueueNodeChan, spreadChan, errChan)
 	go fanOut(spreadChan, appendChan, extractChan)
 	go appendMovieIDs(rt, appendChan)
 	go extractMovie(extractChan, dbChan, errChan)
@@ -47,15 +54,18 @@ func (rt *RottenTomatoes) Visit() bool {
 	if rt.IsEmpty() {
 		return false
 	}
-	movieID := rt.Pop()
-	url := "https://www.rottentomatoes.com/m/" + movieID
-	rt.URLChan <- url
+	qn := rt.Pop()
+	rt.QueueNodeChan <- qn
 	return true
 }
 
-func appendMovieIDs(rt *RottenTomatoes, in <-chan *goquery.Document) {
-	for doc := range in {
-		urls := document.ExtractURLs(doc)
+func appendMovieIDs(rt *RottenTomatoes, in <-chan *node.DocNode) {
+	for dn := range in {
+		if rt.CheckDepth && dn.Depth-1 < 0 {
+			continue
+		}
+
+		urls := document.ExtractURLs(dn.Document)
 		for _, url := range urls {
 			if !movieIDRegex.MatchString(url) {
 				continue
@@ -63,7 +73,8 @@ func appendMovieIDs(rt *RottenTomatoes, in <-chan *goquery.Document) {
 
 			movieID := movieIDRegex.FindStringSubmatch(url)[1]
 			if !rt.HasVisited(movieID) {
-				rt.Append(movieID)
+				qn := &node.QueueNode{Depth: dn.Depth - 1, MovieID: movieID}
+				rt.Append(qn)
 				rt.SetVisited(movieID)
 			}
 		}
@@ -81,21 +92,22 @@ func extractMovie(in <-chan *goquery.Document, out chan<- *movie.Movie, e chan<-
 	}
 }
 
-func fanOut(in <-chan *goquery.Document, out1, out2 chan<- *goquery.Document) {
-	for doc := range in {
-		out1 <- doc
-		out2 <- doc
+func fanOut(in <-chan *node.DocNode, out1 chan<- *node.DocNode, out2 chan<- *goquery.Document) {
+	for dn := range in {
+		out1 <- dn
+		out2 <- dn.Document
 	}
 }
 
-func getHTMLDocument(in <-chan string, out chan<- *goquery.Document, e chan<- error) {
-	for url := range in {
+func getHTMLDocument(in <-chan *node.QueueNode, out chan<- *node.DocNode, e chan<- error) {
+	for qn := range in {
+		url := "https://www.rottentomatoes.com/m/" + qn.MovieID
 		doc, err := document.Get(url)
 		if err != nil {
 			e <- err
 			continue
 		}
-		out <- doc
+		out <- &node.DocNode{Document: doc, QueueNode: qn}
 	}
 }
 

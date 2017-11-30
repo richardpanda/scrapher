@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -30,8 +31,11 @@ func main() {
 	defer db.Close()
 	db.AutoMigrate(&movie.Movie{})
 
-	i := imdb.New("http://www.imdb.com/title/tt0468569")
-	rt := rottentomatoes.New("https://www.rottentomatoes.com/m/the_dark_knight")
+	depth := flag.Int("d", -1, "web scraper depth")
+	flag.Parse()
+
+	i := imdb.New("http://www.imdb.com/title/tt0468569", *depth)
+	rt := rottentomatoes.New("https://www.rottentomatoes.com/m/the_dark_knight", *depth)
 	i.Init(db)
 	rt.Init(db)
 

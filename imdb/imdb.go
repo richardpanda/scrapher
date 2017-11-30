@@ -8,12 +8,14 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/richardpanda/scrapher/html/document"
 	"github.com/richardpanda/scrapher/movie"
+	"github.com/richardpanda/scrapher/node"
 	"github.com/richardpanda/scrapher/queue"
 )
 
 type IMDB struct {
 	*queue.Queue
-	URLChan chan string
+	CheckDepth    bool
+	QueueNodeChan chan *node.QueueNode
 }
 
 var (
@@ -21,24 +23,29 @@ var (
 	movieURLRegex = regexp.MustCompile(`^/title/tt\d{7}/\?`)
 )
 
-func New(url string) *IMDB {
+func New(url string, depth int) *IMDB {
 	movieID := movieIDRegex.FindStringSubmatch(url)[1]
+	qn := &node.QueueNode{
+		Depth:   depth,
+		MovieID: movieID,
+	}
 	return &IMDB{
-		Queue:   queue.New(movieID),
-		URLChan: make(chan string),
+		Queue:         queue.New(qn),
+		CheckDepth:    depth >= 0,
+		QueueNodeChan: make(chan *node.QueueNode),
 	}
 }
 
 func (i *IMDB) Init(db *gorm.DB) {
 	var (
-		spreadChan  = make(chan *goquery.Document)
-		appendChan  = make(chan *goquery.Document)
+		spreadChan  = make(chan *node.DocNode)
+		appendChan  = make(chan *node.DocNode)
 		extractChan = make(chan *goquery.Document)
 		dbChan      = make(chan *movie.Movie)
 		errChan     = make(chan error)
 	)
 
-	go getHTMLDocument(i.URLChan, spreadChan, errChan)
+	go getHTMLDocument(i.QueueNodeChan, spreadChan, errChan)
 	go fanOut(spreadChan, appendChan, extractChan)
 	go appendMovieIDs(i, appendChan)
 	go extractMovie(extractChan, dbChan, errChan)
@@ -50,15 +57,18 @@ func (i *IMDB) Visit() bool {
 	if i.IsEmpty() {
 		return false
 	}
-	movieID := i.Pop()
-	url := "http://www.imdb.com/title/" + movieID
-	i.URLChan <- url
+	qn := i.Pop()
+	i.QueueNodeChan <- qn
 	return true
 }
 
-func appendMovieIDs(i *IMDB, in <-chan *goquery.Document) {
-	for doc := range in {
-		urls := document.ExtractURLs(doc)
+func appendMovieIDs(i *IMDB, in <-chan *node.DocNode) {
+	for dn := range in {
+		if i.CheckDepth && dn.Depth-1 < 0 {
+			continue
+		}
+
+		urls := document.ExtractURLs(dn.Document)
 		for _, url := range urls {
 			if !movieURLRegex.MatchString(url) {
 				continue
@@ -66,7 +76,8 @@ func appendMovieIDs(i *IMDB, in <-chan *goquery.Document) {
 
 			movieID := movieIDRegex.FindStringSubmatch(url)[1]
 			if !i.HasVisited(movieID) {
-				i.Append(movieID)
+				qn := &node.QueueNode{Depth: dn.Depth - 1, MovieID: movieID}
+				i.Append(qn)
 				i.SetVisited(movieID)
 			}
 		}
@@ -84,21 +95,22 @@ func extractMovie(in <-chan *goquery.Document, out chan<- *movie.Movie, e chan<-
 	}
 }
 
-func fanOut(in <-chan *goquery.Document, out1, out2 chan<- *goquery.Document) {
-	for doc := range in {
-		out1 <- doc
-		out2 <- doc
+func fanOut(in <-chan *node.DocNode, out1 chan<- *node.DocNode, out2 chan<- *goquery.Document) {
+	for dn := range in {
+		out1 <- dn
+		out2 <- dn.Document
 	}
 }
 
-func getHTMLDocument(in <-chan string, out chan<- *goquery.Document, e chan<- error) {
-	for url := range in {
+func getHTMLDocument(in <-chan *node.QueueNode, out chan<- *node.DocNode, e chan<- error) {
+	for qn := range in {
+		url := "http://www.imdb.com/title/" + qn.MovieID
 		doc, err := document.Get(url)
 		if err != nil {
 			e <- err
 			continue
 		}
-		out <- doc
+		out <- &node.DocNode{Document: doc, QueueNode: qn}
 	}
 }
 
