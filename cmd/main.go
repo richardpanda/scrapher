@@ -29,40 +29,55 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
 	db.AutoMigrate(&movie.Movie{})
 
+	// imdb: http://www.imdb.com/title/tt0468569
+	// rt: https://www.rottentomatoes.com/m/the_dark_knight
+	imdbURL := flag.String("imdb", "", "imdb start url")
+	rtURL := flag.String("rt", "", "rotten tomatoes start url")
 	depth := flag.Int("d", -1, "web scraper depth")
 	flag.Parse()
 
-	i := imdb.New("http://www.imdb.com/title/tt0468569", *depth)
-	rt := rottentomatoes.New("https://www.rottentomatoes.com/m/the_dark_knight", *depth)
-	i.Init(db)
-	rt.Init(db)
+	if *imdbURL == "" && *rtURL == "" {
+		log.Fatal("specify imdb flag and/or rt flag")
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer fmt.Println("IMDB scraper completed!")
+	if *imdbURL != "" {
+		i := imdb.New(*imdbURL, *depth)
+		i.Init(db)
 
-		for _ = range time.NewTicker(sleepDuration).C {
-			if ok := i.Visit(); !ok {
-				return
+		wg.Add(1)
+		go func() {
+			fmt.Println("imdb scraper has started!")
+			defer wg.Done()
+			defer fmt.Println("imdb scraper completed!")
+
+			for _ = range time.NewTicker(sleepDuration).C {
+				if ok := i.Visit(); !ok {
+					return
+				}
 			}
-		}
-	}()
+		}()
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer fmt.Println("Rotten Tomatoes scraper completed!")
+	if *rtURL != "" {
+		rt := rottentomatoes.New(*rtURL, *depth)
+		rt.Init(db)
 
-		for _ = range time.NewTicker(sleepDuration).C {
-			if ok := rt.Visit(); !ok {
-				return
+		wg.Add(1)
+		go func() {
+			fmt.Println("rotten tomatoes scraper has started!")
+			defer wg.Done()
+			defer fmt.Println("rotten tomatoes scraper completed!")
+
+			for _ = range time.NewTicker(sleepDuration).C {
+				if ok := rt.Visit(); !ok {
+					return
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	wg.Wait()
-	fmt.Println("Finished scraping IMDB and Rotten Tomatoes!")
 }
